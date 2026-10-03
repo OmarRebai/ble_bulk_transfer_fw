@@ -32,6 +32,7 @@ exactly one OS adapter.
 #define BBT_OS_CMSIS
 /* #define BBT_OS_SEQUENCER */
 /* #define BBT_OS_BAREMETAL */
+/* #define BBT_OS_ESP_IDF */
 
 #define BBT_RX_QUEUE_DEPTH         16u
 #define BBT_RX_THREAD_STACK_SIZE   2048u
@@ -117,24 +118,34 @@ The repository is an ESP-IDF component: add it under the project's `components/`
 directory (for example as a git submodule, `components/bbt`) and add `bbt` to the
 `REQUIRES` / `PRIV_REQUIRES` of the component that uses it.
 
-The component selects `BBT_OS_ESP_IDF` and compiles `Src/port/bbt_port_esp_idf.c`.
-The application does not provide `bbt_config.h`: the component ships
-`Inc/port/esp_idf/bbt_config.h`, set from Kconfig
-(`idf.py menuconfig` > Component config > BLE Bulk Transfer (BBT)).
+The component compiles `Src/port/bbt_port_esp_idf.c`. As on the other targets,
+the application provides `bbt_config.h`: on ESP-IDF, in a component named
+`bbt_config` (the BBT component `REQUIRES` it), for example
+`components/bbt_config/include/bbt_config.h` with:
+
+```cmake
+idf_component_register(INCLUDE_DIRS "include")
+```
+
+```c
+#define BBT_OS_ESP_IDF
+#define BBT_RX_THREAD_STACK_SIZE   4096u   /* bytes */
+#define BBT_RX_THREAD_PRIORITY     3       /* FreeRTOS priority */
+#define BBT_ESP_IDF_TASK_CORE      0       /* optional, default tskNO_AFFINITY */
+/* ... the other settings of the Configuration section ... */
+```
 
 - Worker: a FreeRTOS task created with `xTaskCreatePinnedToCore()`. Its stack size
   is in bytes (ESP-IDF FreeRTOS), its priority a FreeRTOS priority, its core
-  `CONFIG_BBT_RX_THREAD_CORE` (-1: no affinity). Keep the priority below the task
-  that runs the BLE host.
+  `BBT_ESP_IDF_TASK_CORE`. Keep the priority below the task that runs the BLE host.
 - Queue and mutexes: FreeRTOS queue and mutex. A timeout shorter than one tick
   waits one tick.
 - Time: `esp_timer_get_time()`, in milliseconds.
 - Logging: a weak `bbt_port_log()` writes to the ESP-IDF log with the tag `bbt`.
   The application may override it.
 
-`CONFIG_BBT_MAX_NOTIFY_SIZE` must be at least `CONFIG_BBT_MAX_CHUNK_SIZE + 8` and
-should fit one ATT value (ATT MTU - 3); the defaults (244 / 252) fit an ATT MTU
-of 255. Call `bbt_core_set_max_chunk_size()` with the negotiated MTU to lower the
+`BBT_MAX_NOTIFY_SIZE` must be at least `BBT_MAX_CHUNK_SIZE + 8` and should fit
+one ATT value (ATT MTU - 3): for example 244 / 252 for an ATT MTU of 255. Call `bbt_core_set_max_chunk_size()` with the negotiated MTU to lower the
 chunk size at run time.
 
 The application still implements `app_bbt_send()` on its BLE stack (NimBLE or

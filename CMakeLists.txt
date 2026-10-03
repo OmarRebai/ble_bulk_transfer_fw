@@ -1,6 +1,7 @@
 # --- ESP-IDF COMPONENT ---
-# Used as an ESP-IDF component (e.g. as a git submodule under the project's components/):
-# FreeRTOS port, configuration from Kconfig (Inc/port/esp_idf/bbt_config.h).
+# Used as an ESP-IDF component (e.g. as a git submodule under the project's components/), with the
+# FreeRTOS port. The project provides bbt_config.h (BBT_OS_ESP_IDF selected) in a component named
+# bbt_config, whose INCLUDE_DIRS holds it.
 if(ESP_PLATFORM)
     idf_component_register(SRCS "Src/bbt_core.c"
                                 "Src/bbt_packet.c"
@@ -8,7 +9,8 @@ if(ESP_PLATFORM)
                                 "Src/bbt_sender.c"
                                 "Src/bbt_transport.c"
                                 "Src/port/bbt_port_esp_idf.c"
-                           INCLUDE_DIRS "Inc" "Inc/port/esp_idf"
+                           INCLUDE_DIRS "Inc"
+                           REQUIRES bbt_config
                            PRIV_REQUIRES freertos esp_timer log)
     return()
 endif()

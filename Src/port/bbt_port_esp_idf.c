@@ -21,8 +21,7 @@
 #include <stdlib.h>
 
 /*
- * Optional: core the worker task is pinned to (0, 1), or tskNO_AFFINITY.
- * bbt_config.h of the ESP-IDF component sets it from Kconfig.
+ * Optional, in bbt_config.h: core the worker task is pinned to (0, 1), or tskNO_AFFINITY.
  */
 #ifndef BBT_ESP_IDF_TASK_CORE
 #define BBT_ESP_IDF_TASK_CORE tskNO_AFFINITY

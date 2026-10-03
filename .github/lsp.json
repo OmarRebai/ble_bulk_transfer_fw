@@ -1,0 +1,24 @@
+{
+  "lspServers": {
+    "cpp": {
+      "command": "C:\\LLVM\\bin\\clangd.exe",
+      "args": ["--background-index"],
+      "fileExtensions": {
+        ".c": "c",
+        ".h": "c",
+        ".cpp": "cpp",
+        ".cxx": "cpp",
+        ".cc": "cpp",
+        ".hpp": "cpp",
+        ".hxx": "cpp"
+      }
+    },
+    "python": {
+      "command": "pyright-langserver",
+      "args": ["--stdio"],
+      "fileExtensions": {
+        ".py": "python"
+      }
+    }
+  }
+}

@@ -32,6 +32,7 @@ typedef void *bbt_os_mutex_t;
  *   Src/port/bbt_port_cmsis.c
  *   Src/port/bbt_port_baremetal.c
  *   Src/port/bbt_port_sequencer.c
+ *   Src/port/bbt_port_esp_idf.c
  * ==========================================================================*/
 
 /**

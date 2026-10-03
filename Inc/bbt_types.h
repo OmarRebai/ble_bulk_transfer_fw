@@ -23,20 +23,12 @@
  * Configuration validation
  * ==========================================================================*/
 
-#if defined(BBT_OS_CMSIS) && defined(BBT_OS_BAREMETAL)
+#if (defined(BBT_OS_CMSIS) + defined(BBT_OS_BAREMETAL) + defined(BBT_OS_SEQUENCER) + defined(BBT_OS_ESP_IDF)) > 1
 #error "Define only one BBT OS adapter"
 #endif
 
-#if defined(BBT_OS_CMSIS) && defined(BBT_OS_SEQUENCER)
-#error "Define only one BBT OS adapter"
-#endif
-
-#if defined(BBT_OS_BAREMETAL) && defined(BBT_OS_SEQUENCER)
-#error "Define only one BBT OS adapter"
-#endif
-
-#if !defined(BBT_OS_CMSIS) && !defined(BBT_OS_BAREMETAL) && !defined(BBT_OS_SEQUENCER)
-#error "You must define one of BBT_OS_CMSIS, BBT_OS_BAREMETAL, or BBT_OS_SEQUENCER in bbt_config.h"
+#if !defined(BBT_OS_CMSIS) && !defined(BBT_OS_BAREMETAL) && !defined(BBT_OS_SEQUENCER) && !defined(BBT_OS_ESP_IDF)
+#error "You must define one of BBT_OS_CMSIS, BBT_OS_BAREMETAL, BBT_OS_SEQUENCER, or BBT_OS_ESP_IDF in bbt_config.h"
 #endif
 
 #ifndef BBT_MAX_CHUNK_SIZE
@@ -403,7 +395,15 @@ typedef struct
 */
 } bbt_mode_entry_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Register a mode table entry at index (0..BBT_MODE_TABLE_SIZE-1). */
 bbt_result_t bbt_mode_register(uint8_t index, const bbt_mode_entry_t *entry);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* BBT_TYPES_H */

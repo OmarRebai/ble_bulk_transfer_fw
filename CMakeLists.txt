@@ -1,3 +1,18 @@
+# --- ESP-IDF COMPONENT ---
+# Used as an ESP-IDF component (e.g. as a git submodule under the project's components/):
+# FreeRTOS port, configuration from Kconfig (Inc/port/esp_idf/bbt_config.h).
+if(ESP_PLATFORM)
+    idf_component_register(SRCS "Src/bbt_core.c"
+                                "Src/bbt_packet.c"
+                                "Src/bbt_receiver.c"
+                                "Src/bbt_sender.c"
+                                "Src/bbt_transport.c"
+                                "Src/port/bbt_port_esp_idf.c"
+                           INCLUDE_DIRS "Inc" "Inc/port/esp_idf"
+                           PRIV_REQUIRES freertos esp_timer log)
+    return()
+endif()
+
 cmake_minimum_required(VERSION 3.22)
 
 # --- 1. SETUP LIBRARY NAME ---

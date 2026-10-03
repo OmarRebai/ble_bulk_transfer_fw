@@ -360,7 +360,7 @@ bbt_result_t bbt_core_init(void)
 
   _core_ctx.worker.running = true;
 
-#if defined(BBT_OS_CMSIS) || defined(BBT_OS_SEQUENCER)
+#if defined(BBT_OS_CMSIS) || defined(BBT_OS_SEQUENCER) || defined(BBT_OS_ESP_IDF)
   _core_ctx.worker.thread =
       bbt_os_thread_create(_worker_task, NULL, "bbt_worker", BBT_RX_THREAD_STACK_SIZE, BBT_RX_THREAD_PRIORITY);
 
@@ -403,7 +403,7 @@ bbt_result_t bbt_core_deinit(void)
 
   _core_ctx.worker.running = false;
 
-#if defined(BBT_OS_CMSIS) || defined(BBT_OS_SEQUENCER)
+#if defined(BBT_OS_CMSIS) || defined(BBT_OS_SEQUENCER) || defined(BBT_OS_ESP_IDF)
   if (_core_ctx.worker.thread != NULL)
   {
     bbt_os_thread_delete(_core_ctx.worker.thread);

@@ -16,6 +16,8 @@ worker queue. Packet handling then runs from a lower-priority worker context:
   when packets arrive.
 - `BBT_OS_BAREMETAL`: no worker is created; the application calls
   `bbt_core_worker_service(false)` periodically.
+- `BBT_OS_ESP_IDF`: a FreeRTOS worker task is created (ESP-IDF component, see
+  below).
 
 ## Configuration
 
@@ -108,6 +110,35 @@ If the BLE write callback can interrupt the main loop, provide:
 #define BBT_BAREMETAL_ENTER_CRITICAL()  __disable_irq()
 #define BBT_BAREMETAL_EXIT_CRITICAL()   __enable_irq()
 ```
+
+### ESP-IDF Port
+
+The repository is an ESP-IDF component: add it under the project's `components/`
+directory (for example as a git submodule, `components/bbt`) and add `bbt` to the
+`REQUIRES` / `PRIV_REQUIRES` of the component that uses it.
+
+The component selects `BBT_OS_ESP_IDF` and compiles `Src/port/bbt_port_esp_idf.c`.
+The application does not provide `bbt_config.h`: the component ships
+`Inc/port/esp_idf/bbt_config.h`, set from Kconfig
+(`idf.py menuconfig` > Component config > BLE Bulk Transfer (BBT)).
+
+- Worker: a FreeRTOS task created with `xTaskCreatePinnedToCore()`. Its stack size
+  is in bytes (ESP-IDF FreeRTOS), its priority a FreeRTOS priority, its core
+  `CONFIG_BBT_RX_THREAD_CORE` (-1: no affinity). Keep the priority below the task
+  that runs the BLE host.
+- Queue and mutexes: FreeRTOS queue and mutex. A timeout shorter than one tick
+  waits one tick.
+- Time: `esp_timer_get_time()`, in milliseconds.
+- Logging: a weak `bbt_port_log()` writes to the ESP-IDF log with the tag `bbt`.
+  The application may override it.
+
+`CONFIG_BBT_MAX_NOTIFY_SIZE` must be at least `CONFIG_BBT_MAX_CHUNK_SIZE + 8` and
+should fit one ATT value (ATT MTU - 3); the defaults (244 / 252) fit an ATT MTU
+of 255. Call `bbt_core_set_max_chunk_size()` with the negotiated MTU to lower the
+chunk size at run time.
+
+The application still implements `app_bbt_send()` on its BLE stack (NimBLE or
+Bluedroid), and feeds the BLE write callback to `bbt_core_enqueue_packet()`.
 
 ## Application Hooks
 

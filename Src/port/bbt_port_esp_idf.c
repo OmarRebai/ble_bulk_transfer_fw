@@ -1,6 +1,7 @@
 /**
  * @file            bbt_port_esp_idf.c
  * @brief           ESP-IDF (FreeRTOS) port implementations for OS abstractions used by BBT.
+ * Mirrors bbt_port_cmsis.c on the native FreeRTOS API.
  * @date            03.10.2026
  * @author          Omar Rebai
  * @copyright       &copy; 2026 habemus! electronic + transfer GmbH
@@ -20,9 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/*
- * Optional, in bbt_config.h: core the worker task is pinned to (0, 1), or tskNO_AFFINITY.
- */
+/* Optional, in bbt_config.h: core the worker task is pinned to (0, 1), or tskNO_AFFINITY. */
 #ifndef BBT_ESP_IDF_TASK_CORE
 #define BBT_ESP_IDF_TASK_CORE tskNO_AFFINITY
 #endif
@@ -37,43 +36,38 @@ static const char *TAG = "bbt";
 typedef struct
 {
   void (*entry)(void *);
-  void *arg;
+  void       *arg;
+  UBaseType_t priority;
 } bbt_esp_idf_thread_start_t;
 
 /**
- * @brief Convert a BBT timeout to FreeRTOS ticks.
- *
- * A non-zero timeout shorter than one tick still waits one tick.
+ * @brief Convert a BBT timeout to FreeRTOS ticks (BBT_OS_WAIT_FOREVER is osWaitForever in the CMSIS port).
  */
 static TickType_t _ms_to_ticks(uint32_t timeout_ms)
 {
-  if (timeout_ms == BBT_OS_WAIT_FOREVER)
-  {
-    return portMAX_DELAY;
-  }
-
-  TickType_t ticks = pdMS_TO_TICKS(timeout_ms);
-
-  if ((ticks == 0u) && (timeout_ms > 0u))
-  {
-    ticks = 1u;
-  }
-
-  return ticks;
+  return (timeout_ms == BBT_OS_WAIT_FOREVER) ? portMAX_DELAY : pdMS_TO_TICKS(timeout_ms);
 }
 
 /**
  * @brief FreeRTOS task entry wrapping the BBT worker entry.
  *
- * A FreeRTOS task function must not return. When the BBT entry returns (core
- * deinit cleared the running flag), the task suspends itself and waits for
- * bbt_os_thread_delete(), which bbt_core_deinit() calls right after.
+ * The task is created at idle priority and raises itself to the requested one here.
+ * On CMSIS the worker is created before osKernelStart() and only runs once
+ * bbt_core_init() has returned. The ESP-IDF scheduler already runs when app_main()
+ * calls it, so a worker of higher priority than the caller would run as soon as it is
+ * created, before the core marks itself initialized, and spin without ever blocking.
+ * At idle priority it only gets scheduled once the caller is done.
+ *
+ * A FreeRTOS task function must not return (osThreadNew() handles it on CMSIS). When
+ * the BBT entry returns (bbt_core_deinit() cleared the running flag), the task
+ * suspends itself until bbt_os_thread_delete(), which bbt_core_deinit() calls right after.
  */
 static void _thread_trampoline(void *param)
 {
   bbt_esp_idf_thread_start_t start = *(bbt_esp_idf_thread_start_t *)param;
   free(param);
 
+  vTaskPrioritySet(NULL, start.priority);
   start.entry(start.arg);
 
   for (;;)
@@ -85,24 +79,20 @@ static void _thread_trampoline(void *param)
 bbt_os_thread_t bbt_os_thread_create(void (*entry)(void *), void *arg, const char *name, uint32_t stack_size,
                                      int priority)
 {
-  if ((entry == NULL) || (stack_size == 0u) || (priority < 0))
-  {
-    return NULL;
-  }
-
   bbt_esp_idf_thread_start_t *start = malloc(sizeof(*start));
   if (start == NULL)
   {
     return NULL;
   }
 
-  start->entry = entry;
-  start->arg   = arg;
+  start->entry    = entry;
+  start->arg      = arg;
+  start->priority = (UBaseType_t)priority;
 
   TaskHandle_t handle = NULL;
 
-  /* ESP-IDF FreeRTOS: the stack depth is in bytes. */
-  if (xTaskCreatePinnedToCore(_thread_trampoline, name, stack_size, start, (UBaseType_t)priority, &handle,
+  /* ESP-IDF FreeRTOS: the stack depth is in bytes, like attr.stack_size on CMSIS. */
+  if (xTaskCreatePinnedToCore(_thread_trampoline, name, stack_size, start, tskIDLE_PRIORITY, &handle,
                               BBT_ESP_IDF_TASK_CORE) != pdPASS)
   {
     free(start);
@@ -122,11 +112,6 @@ void bbt_os_thread_delete(bbt_os_thread_t thread)
 
 bbt_os_queue_t bbt_os_queue_create(uint32_t item_size, uint32_t depth)
 {
-  if ((item_size == 0u) || (depth == 0u))
-  {
-    return NULL;
-  }
-
   return (bbt_os_queue_t)xQueueCreate(depth, item_size);
 }
 
